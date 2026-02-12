@@ -1,0 +1,31 @@
+import { FastifyInstance } from 'fastify';
+import { db } from '../db/index.js';
+import { pods } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
+
+export async function podRoutes(fastify: FastifyInstance) {
+  // GET /api/pods - List all pods
+  fastify.get('/pods', async (request, reply) => {
+    const allPods = await db.select().from(pods).where(eq(pods.active, true));
+    const mapped = allPods.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      location: p.location,
+      operatingHours: p.operating_hours,
+      operatorId: p.operator_id,
+      fibertimePopId: p.fibertime_pop_id,
+      stock: p.stock,
+      active: p.active,
+    }));
+    return reply.send(mapped);
+  });
+
+  // GET /api/pods/:id - Get pod by ID
+  fastify.get<{ Params: { id: string } }>('/pods/:id', async (request, reply) => {
+    const pod = await db.select().from(pods).where(eq(pods.id, request.params.id)).then(r => r[0]);
+    if (!pod) {
+      return reply.code(404).send({ error: 'Pod not found' });
+    }
+    return reply.send(pod);
+  });
+}

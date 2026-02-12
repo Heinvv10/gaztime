@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-navy text-white antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    touch-action: manipulation;
+  }
+
+  /* Prevent text size adjustment on orientation change */
+  html {
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+
+  /* Improve tap highlight for better mobile experience */
+  * {
+    -webkit-tap-highlight-color: rgba(43, 191, 179, 0.1);
+  }
+
+  /* Scroll behavior */
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  /* Touch-friendly button base */
+  .btn {
+    @apply min-h-touch min-w-touch px-6 py-3 rounded-xl font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary to-primary-600 text-white shadow-lg hover:shadow-glow active:shadow-glow-lg;
+  }
+
+  .btn-accent {
+    @apply bg-gradient-to-r from-accent to-accent-600 text-navy shadow-lg hover:shadow-xl;
+  }
+
+  .btn-outline {
+    @apply border-2 border-primary text-primary hover:bg-primary hover:text-white;
+  }
+
+  .btn-ghost {
+    @apply text-gray-300 hover:bg-navy-700 hover:text-white;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-navy-700 rounded-2xl p-6 shadow-xl;
+  }
+
+  .card-gradient {
+    @apply bg-gradient-to-br from-primary-600 to-primary-800 rounded-2xl p-6 shadow-xl text-white;
+  }
+
+  /* Input styles */
+  .input {
+    @apply w-full min-h-touch px-4 py-3 bg-navy-700 border border-navy-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all;
+  }
+
+  /* Loading skeleton */
+  .skeleton {
+    @apply animate-pulse bg-navy-700 rounded;
+  }
+
+  /* Bottom navigation safe area */
+  .bottom-nav {
+    @apply pb-[env(safe-area-inset-bottom)];
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Text gradient */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+  }
+
+  /* Glass morphism */
+  .glass {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+}
+
+/* Custom scrollbar for desktop */
+@media (min-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-navy-800;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary-600 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary-500;
+  }
+}
+
+/* Offline indicator */
+.offline-banner {
+  @apply fixed top-0 left-0 right-0 bg-red-500 text-white text-center py-2 text-sm font-medium z-50;
+}

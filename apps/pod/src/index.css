@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+  }
+  
+  * {
+    @apply touch-manipulation;
+  }
+}
+
+@layer utilities {
+  .touch-target {
+    @apply min-h-[60px] min-w-[60px];
+  }
+  
+  .touch-target-lg {
+    @apply min-h-[80px] min-w-[80px];
+  }
+  
+  /* Success feedback animation */
+  @keyframes success-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 0.8;
+    }
+  }
+  
+  .success-feedback {
+    animation: success-pulse 0.3s ease-in-out;
+  }
+  
+  /* Error shake animation */
+  @keyframes error-shake {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-10px);
+    }
+    75% {
+      transform: translateX(10px);
+    }
+  }
+  
+  .error-feedback {
+    animation: error-shake 0.5s ease-in-out;
+  }
+}

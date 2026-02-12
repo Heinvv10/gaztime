@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head><title>GazTime E2E Test Runner</title>
+<style>
+  body { font-family: monospace; margin: 20px; background: #1a1a2e; color: #e0e0e0; }
+  .app { margin: 10px 0; padding: 15px; background: #16213e; border-radius: 8px; }
+  .app h3 { margin: 0 0 10px; color: #00d4aa; }
+  .pass { color: #00ff88; }
+  .fail { color: #ff4444; }
+  .warn { color: #ffaa00; }
+  .log { font-size: 12px; max-height: 200px; overflow-y: auto; background: #0a0a1a; padding: 10px; border-radius: 4px; margin-top: 5px; }
+  #summary { margin-top: 20px; padding: 15px; background: #0f3460; border-radius: 8px; }
+  iframe { display: none; }
+</style>
+</head>
+<body>
+<h1 style="color:#00d4aa">🔥 GazTime E2E Test Runner</h1>
+<div id="results"></div>
+<div id="summary"></div>
+
+<script>
+const apps = [
+  { name: 'Customer App', url: 'http://localhost:3000', port: 3000 },
+  { name: 'Admin Dashboard', url: 'http://localhost:3001', port: 3001 },
+  { name: 'Driver App', url: 'http://localhost:3003', port: 3003 },
+  { name: 'Pod POS', url: 'http://localhost:3005', port: 3005 },
+];
+
+const API = 'http://localhost:3333/api';
+const results = {};
+
+async function testAPI() {
+  const div = document.createElement('div');
+  div.className = 'app';
+  div.innerHTML = '<h3>🔌 API Endpoints</h3>';
+  
+  const tests = [
+    { name: 'GET /products', url: '/products', check: r => Array.isArray(r) && r.length > 0 },
+    { name: 'GET /customers', url: '/customers', check: r => Array.isArray(r) && r.length > 0 },
+    { name: 'GET /orders', url: '/orders', check: r => r.data && r.data.length > 0 },
+    { name: 'GET /drivers', url: '/drivers', check: r => Array.isArray(r) && r.length > 0 },
+    { name: 'GET /pods', url: '/pods', check: r => Array.isArray(r) },
+    { name: 'GET /inventory/stock', url: '/inventory/stock', check: r => r.success },
+    { name: 'GET /inventory/alerts/low-stock', url: '/inventory/alerts/low-stock', check: r => r.success },
+    { name: 'GET /drivers/available', url: '/drivers/available', check: r => r.success },
+    { name: 'GET /customers/:id', url: null, check: null }, // will fill dynamically
+    { name: 'GET /customers/:id/wallet', url: null, check: null },
+    { name: 'GET /customers/phone/:phone', url: '/customers/phone/+27783456789', check: r => r.success || r.data },
+  ];
+  
+  // Get customer ID first
+  const custResp = await fetch(API + '/customers').then(r => r.json());
+  if (custResp.length > 0) {
+    tests[8] = { name: 'GET /customers/:id', url: `/customers/${custResp[0].id}`, check: r => r.success || r.data };
+    tests[9] = { name: 'GET /customers/:id/wallet', url: `/customers/${custResp[0].id}/wallet`, check: r => r.success };
+  }
+  
+  let pass = 0, fail = 0;
+  for (const test of tests) {
+    if (!test.url) continue;
+    try {
+      const resp = await fetch(API + test.url);
+      const json = await resp.json();
+      const ok = test.check(json);
+      if (ok) {
+        div.innerHTML += `<div class="pass">  ✅ ${test.name}</div>`;
+        pass++;
+      } else {
+        div.innerHTML += `<div class="fail">  ❌ ${test.name}: ${JSON.stringify(json).substring(0, 100)}</div>`;
+        fail++;
+      }
+    } catch(e) {
+      div.innerHTML += `<div class="fail">  ❌ ${test.name}: ${e.message}</div>`;
+      fail++;
+    }
+  }
+  
+  results['API'] = { pass, fail };
+  document.getElementById('results').appendChild(div);
+}
+
+async function testApp(app) {
+  const div = document.createElement('div');
+  div.className = 'app';
+  div.innerHTML = `<h3>📱 ${app.name} (${app.url})</h3>`;
+  
+  let pass = 0, fail = 0, warns = 0;
+  const errors = [];
+  
+  try {
+    // Test that app loads
+    const resp = await fetch(app.url);
+    if (resp.ok) {
+      const html = await resp.text();
+      if (html.includes('id="root"') || html.includes('id="app"')) {
+        div.innerHTML += `<div class="pass">  ✅ App loads (React root found)</div>`;
+        pass++;
+      } else {
+        div.innerHTML += `<div class="warn">  ⚠️ App loads but no React root</div>`;
+        warns++;
+      }
+      
+      // Check for bundle JS
+      if (html.includes('.js"') || html.includes('.tsx')) {
+        div.innerHTML += `<div class="pass">  ✅ JavaScript bundle present</div>`;
+        pass++;
+      }
+      
+      // Check title
+      const titleMatch = html.match(/<title>(.*?)<\/title>/);
+      if (titleMatch) {
+        div.innerHTML += `<div class="pass">  ✅ Title: "${titleMatch[1]}"</div>`;
+        pass++;
+      }
+    } else {
+      div.innerHTML += `<div class="fail">  ❌ HTTP ${resp.status}</div>`;
+      fail++;
+    }
+    
+    // Test CORS to API
+    try {
+      const apiResp = await fetch(API + '/products');
+      if (apiResp.ok) {
+        div.innerHTML += `<div class="pass">  ✅ CORS to API works</div>`;
+        pass++;
+      }
+    } catch(e) {
+      div.innerHTML += `<div class="fail">  ❌ CORS to API blocked: ${e.message}</div>`;
+      fail++;
+    }
+    
+  } catch(e) {
+    div.innerHTML += `<div class="fail">  ❌ Failed to load: ${e.message}</div>`;
+    fail++;
+  }
+  
+  results[app.name] = { pass, fail, warns };
+  document.getElementById('results').appendChild(div);
+}
+
+async function runAll() {
+  await testAPI();
+  for (const app of apps) {
+    await testApp(app);
+  }
+  
+  // Summary
+  const sumDiv = document.getElementById('summary');
+  let totalPass = 0, totalFail = 0;
+  for (const [name, r] of Object.entries(results)) {
+    totalPass += r.pass;
+    totalFail += r.fail;
+  }
+  sumDiv.innerHTML = `
+    <h3 style="color:#00d4aa">📊 Summary</h3>
+    <div class="pass">✅ Passed: ${totalPass}</div>
+    <div class="fail">❌ Failed: ${totalFail}</div>
+    <div class="warn">⚠️ Warnings: ${Object.values(results).reduce((s,r) => s + (r.warns||0), 0)}</div>
+    <br>
+    <div>Test completed at ${new Date().toLocaleString()}</div>
+  `;
+}
+
+runAll();
+</script>
+</body>
+</html>
