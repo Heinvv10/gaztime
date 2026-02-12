@@ -14,17 +14,18 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@gaztime/shared": "workspace:*",
+    "@tanstack/react-table": "^8.11.2",
+    "clsx": "^2.1.0",
+    "date-fns": "^3.0.6",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.309.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.0",
-    "clsx": "^2.1.0",
-    "tailwind-merge": "^2.2.0",
-    "lucide-react": "^0.309.0",
-    "recharts": "^2.10.3",
-    "leaflet": "^1.9.4",
     "react-leaflet": "^4.2.1",
-    "@tanstack/react-table": "^8.11.2",
-    "date-fns": "^3.0.6",
+    "react-router-dom": "^6.21.0",
+    "recharts": "^2.10.3",
+    "tailwind-merge": "^2.2.0",
     "zustand": "^4.4.7"
   },
   "devDependencies": {

@@ -139,12 +139,12 @@ export const useStore = create<DriverStore>((set, get) => ({
       // Load orders assigned to this driver
       const allOrders = await api.orders.list({ driverId: driver.id });
       const assignedOrders = allOrders.filter(
-        o => ['assigned', 'in_transit'].includes(o.status)
+        (o: Order) => ['assigned', 'in_transit'].includes(o.status)
       );
       set({ orders: assignedOrders });
       
       // Set active order if in transit
-      const inTransit = assignedOrders.find(o => o.status === 'in_transit');
+      const inTransit = assignedOrders.find((o: Order) => o.status === 'in_transit');
       if (inTransit) {
         set({ activeOrder: inTransit, status: 'on_delivery' });
       }

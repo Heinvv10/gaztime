@@ -47,13 +47,18 @@ export async function customerRoutes(fastify: FastifyInstance) {
   fastify.post<{ Body: RegisterCustomerRequest }>('/customers', async (request, reply) => {
     try {
       const validatedBody = CreateCustomerSchema.parse(request.body);
-      const customer = await customerService.registerCustomer(validatedBody as RegisterCustomerRequest);
+      // Normalize: frontend sends addresses[] or address{}
+      const normalized: any = { ...validatedBody };
+      if (normalized.addresses && !normalized.address) {
+        normalized.address = normalized.addresses[0];
+      }
+      if (normalized.language && !normalized.languagePreference) {
+        normalized.languagePreference = normalized.language;
+      }
+      const customer = await customerService.registerCustomer(normalized as RegisterCustomerRequest);
       return reply.code(201).send({
         success: true,
-        data: {
-          customer,
-          otp_sent: true, // TODO: Implement OTP sending
-        },
+        data: customer,
       });
     } catch (error: any) {
       if (error instanceof ZodError) {

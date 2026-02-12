@@ -16,7 +16,7 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter basename="/driver">
       <Routes>
         <Route path="/login" element={<Login />} />
         

@@ -1,0 +1,11 @@
+{
+  "project": "gaztime",
+  "description": "LPG delivery platform - pnpm monorepo",
+  "packageManager": "pnpm",
+  "conventions": {
+    "maxFileLines": 300,
+    "maxComponentLines": 200,
+    "noConsoleLogs": false,
+    "testFramework": "vitest"
+  }
+}

@@ -48,20 +48,26 @@ export const AssignDriverSchema = z.object({
 
 // ---- Customer Validation ----
 
+const AddressSchema = z.object({
+  label: z.string().optional(),
+  text: z.string().min(1),
+  landmark: z.string().optional(),
+  location: z.object({
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
+  }).optional(),
+  isDefault: z.boolean().optional(),
+  is_default: z.boolean().optional(),
+});
+
 export const CreateCustomerSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   phone: z.string().min(1, 'Phone is required'),
   email: z.string().email().optional(),
-  address: z.object({
-    label: z.string().optional(),
-    text: z.string().min(1),
-    landmark: z.string().optional(),
-    location: z.object({
-      lat: z.number().min(-90).max(90),
-      lng: z.number().min(-180).max(180),
-    }).optional(),
-    isDefault: z.boolean().optional(),
-  }),
+  // Accept both singular and array form
+  address: AddressSchema.optional(),
+  addresses: z.array(AddressSchema).optional(),
+  language: z.string().optional(),
   languagePreference: z.enum(['en', 'zu', 'sep', 'sot', 'xh']).optional(),
   referredBy: z.string().optional(),
 });
