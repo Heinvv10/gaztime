@@ -1,18 +1,21 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  CheckCircle, 
-  Camera, 
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  CheckCircle,
+  Camera,
   Pen,
   Hash,
   QrCode,
   Banknote,
   CreditCard,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
 import Toast from '../components/Toast';
+import CameraCapture from '../components/CameraCapture';
+import SignatureCapture from '../components/SignatureCapture';
 
 type ProofMethod = 'signature' | 'photo' | 'otp';
 type PaymentType = 'cash' | 'digital';
@@ -22,13 +25,17 @@ export default function DeliveryCompletion() {
   const navigate = useNavigate();
   const { toast, showToast, hideToast } = useToast();
   const { orders, completeDelivery } = useStore();
-  
+
   const order = orders.find(o => o.id === orderId);
   const [proofMethod, setProofMethod] = useState<ProofMethod>('otp');
   const [otpCode, setOtpCode] = useState('');
   const [paymentType, setPaymentType] = useState<PaymentType>('cash');
   const [cashAmount, setCashAmount] = useState(order?.totalAmount ? order.totalAmount.toString() : '0');
   const [cylinderScanned, setCylinderScanned] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [showSignature, setShowSignature] = useState(false);
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [capturedSignature, setCapturedSignature] = useState<string | null>(null);
 
   if (!order) {
     return <div className="p-6 text-center text-gray-400">Order not found</div>;
@@ -39,15 +46,29 @@ export default function DeliveryCompletion() {
       showToast('Please confirm payment collection', 'error');
       return;
     }
-    
+
     if (proofMethod === 'otp' && otpCode.length !== 6) {
       showToast('Please enter the 6-digit OTP', 'error');
       return;
     }
 
+    if (proofMethod === 'photo' && !capturedPhoto) {
+      showToast('Please take a photo', 'error');
+      return;
+    }
+
+    if (proofMethod === 'signature' && !capturedSignature) {
+      showToast('Please capture signature', 'error');
+      return;
+    }
+
     const proof = {
       type: proofMethod,
-      data: proofMethod === 'otp' ? otpCode : 'completed',
+      data: proofMethod === 'otp'
+        ? otpCode
+        : proofMethod === 'photo'
+        ? capturedPhoto
+        : capturedSignature || 'completed',
     };
     completeDelivery(order.id, proof);
     navigate('/', { replace: true });
@@ -61,12 +82,16 @@ export default function DeliveryCompletion() {
     }, 500);
   };
 
-  const mockPen = () => {
-    showToast('Signature captured', 'success');
+  const handlePhotoCapture = (imageDataUrl: string) => {
+    setCapturedPhoto(imageDataUrl);
+    setShowCamera(false);
+    showToast('Photo captured successfully', 'success');
   };
 
-  const mockPhoto = () => {
-    showToast('Photo captured', 'success');
+  const handleSignatureCapture = (signatureDataUrl: string) => {
+    setCapturedSignature(signatureDataUrl);
+    setShowSignature(false);
+    showToast('Signature captured successfully', 'success');
   };
 
   return (
@@ -150,33 +175,87 @@ export default function DeliveryCompletion() {
             </div>
           )}
 
-          {/* Pen */}
+          {/* Signature */}
           {proofMethod === 'signature' && (
             <div>
-              <div className="bg-dark-surface border-2 border-dashed border-dark-border rounded-lg h-40 flex items-center justify-center mb-3">
-                <div className="text-center text-gray-500">
-                  <Pen className="w-12 h-12 mx-auto mb-2" />
-                  <p className="text-sm">Customer signature area</p>
+              {capturedSignature ? (
+                <div className="space-y-3">
+                  <div className="bg-white border-2 border-teal rounded-lg p-2">
+                    <img
+                      src={capturedSignature}
+                      alt="Signature"
+                      className="w-full h-32 object-contain"
+                    />
+                  </div>
+                  <button
+                    onClick={() => {
+                      setCapturedSignature(null);
+                      setShowSignature(true);
+                    }}
+                    className="btn btn-secondary w-full"
+                  >
+                    Recapture Signature
+                  </button>
                 </div>
-              </div>
-              <button onClick={mockPen} className="btn btn-secondary w-full">
-                Capture Pen
-              </button>
+              ) : (
+                <div>
+                  <div className="bg-dark-surface border-2 border-dashed border-dark-border rounded-lg h-40 flex items-center justify-center mb-3">
+                    <div className="text-center text-gray-500">
+                      <Pen className="w-12 h-12 mx-auto mb-2" />
+                      <p className="text-sm">Customer signature area</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowSignature(true)}
+                    className="btn btn-primary w-full flex items-center justify-center gap-2"
+                  >
+                    <Pen className="w-5 h-5" />
+                    Capture Signature
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           {/* Photo */}
           {proofMethod === 'photo' && (
             <div>
-              <div className="bg-dark-surface border-2 border-dashed border-dark-border rounded-lg h-40 flex items-center justify-center mb-3">
-                <div className="text-center text-gray-500">
-                  <Camera className="w-12 h-12 mx-auto mb-2" />
-                  <p className="text-sm">Photo proof area</p>
+              {capturedPhoto ? (
+                <div className="space-y-3">
+                  <div className="bg-dark-surface border-2 border-teal rounded-lg p-2">
+                    <img
+                      src={capturedPhoto}
+                      alt="Delivery proof"
+                      className="w-full h-48 object-cover rounded"
+                    />
+                  </div>
+                  <button
+                    onClick={() => {
+                      setCapturedPhoto(null);
+                      setShowCamera(true);
+                    }}
+                    className="btn btn-secondary w-full"
+                  >
+                    Retake Photo
+                  </button>
                 </div>
-              </div>
-              <button onClick={mockPhoto} className="btn btn-secondary w-full">
-                Take Photo
-              </button>
+              ) : (
+                <div>
+                  <div className="bg-dark-surface border-2 border-dashed border-dark-border rounded-lg h-40 flex items-center justify-center mb-3">
+                    <div className="text-center text-gray-500">
+                      <Camera className="w-12 h-12 mx-auto mb-2" />
+                      <p className="text-sm">Photo proof area</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowCamera(true)}
+                    className="btn btn-primary w-full flex items-center justify-center gap-2"
+                  >
+                    <Camera className="w-5 h-5" />
+                    Take Photo
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -260,6 +339,26 @@ export default function DeliveryCompletion() {
       </motion.div>
 
       {toast.visible && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+
+      {/* Camera Modal */}
+      <AnimatePresence>
+        {showCamera && (
+          <CameraCapture
+            onCapture={handlePhotoCapture}
+            onCancel={() => setShowCamera(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Signature Modal */}
+      <AnimatePresence>
+        {showSignature && (
+          <SignatureCapture
+            onCapture={handleSignatureCapture}
+            onCancel={() => setShowSignature(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

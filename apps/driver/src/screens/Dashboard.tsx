@@ -15,13 +15,17 @@ import type { Order } from '@shared/types';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { 
-    driver, 
-    orders, 
-    isOnline, 
-    toggleOnline, 
+  const {
+    driver,
+    orders,
+    isOnline,
+    toggleOnline,
     vehicleStock,
-    dailyChecklistCompleted 
+    dailyChecklistCompleted,
+    isOnShift,
+    shiftStartTime,
+    startShift,
+    endShift,
   } = useStore();
 
   const assignedOrders = orders.filter(o => o.status === 'assigned' || o.status === 'confirmed');
@@ -71,43 +75,92 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* Online/Offline Toggle */}
-      <motion.div
-        className="card"
-        whileTap={{ scale: 0.98 }}
-      >
-        <button
-          onClick={toggleOnline}
-          className="w-full flex items-center justify-between"
+      {/* Shift Controls */}
+      {!isOnShift ? (
+        <motion.div
+          className="card bg-gradient-to-r from-teal/20 to-yellow/20 border-teal"
+          whileTap={{ scale: 0.98 }}
         >
-          <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-              isOnline ? 'bg-teal/20' : 'bg-gray-700'
-            }`}>
-              <Power className={`w-6 h-6 ${isOnline ? 'text-teal' : 'text-gray-400'}`} />
+          <button
+            onClick={startShift}
+            className="w-full flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-teal flex items-center justify-center">
+                <Power className="w-6 h-6 text-dark-bg" />
+              </div>
+              <div className="text-left">
+                <h3 className="font-semibold text-white">Start Your Shift</h3>
+                <p className="text-sm text-gray-300">
+                  Ready to start deliveries?
+                </p>
+              </div>
             </div>
-            <div className="text-left">
-              <h3 className="font-semibold text-white">
-                {isOnline ? 'You\'re Online' : 'You\'re Offline'}
-              </h3>
-              <p className="text-sm text-gray-400">
-                {isOnline ? 'Receiving orders' : 'Tap to go online'}
-              </p>
+            <ChevronRight className="w-6 h-6 text-teal" />
+          </button>
+        </motion.div>
+      ) : (
+        <div className="space-y-3">
+          {/* Shift Timer */}
+          <div className="card bg-teal/10 border-teal">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm text-gray-400">On shift since</div>
+                <div className="text-lg font-semibold text-white">
+                  {shiftStartTime?.toLocaleTimeString('en-ZA', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </div>
+              </div>
+              <button
+                onClick={endShift}
+                className="btn btn-danger text-sm"
+              >
+                End Shift
+              </button>
             </div>
           </div>
+
+          {/* Online/Offline Toggle */}
           <motion.div
-            animate={{ rotate: isOnline ? 180 : 0 }}
-            className={`w-10 h-6 rounded-full p-1 ${
-              isOnline ? 'bg-teal' : 'bg-gray-700'
-            }`}
+            className="card"
+            whileTap={{ scale: 0.98 }}
           >
-            <motion.div
-              animate={{ x: isOnline ? 16 : 0 }}
-              className="w-4 h-4 bg-white rounded-full"
-            />
+            <button
+              onClick={toggleOnline}
+              className="w-full flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                  isOnline ? 'bg-teal/20' : 'bg-gray-700'
+                }`}>
+                  <Power className={`w-6 h-6 ${isOnline ? 'text-teal' : 'text-gray-400'}`} />
+                </div>
+                <div className="text-left">
+                  <h3 className="font-semibold text-white">
+                    {isOnline ? 'You\'re Online' : 'You\'re Offline'}
+                  </h3>
+                  <p className="text-sm text-gray-400">
+                    {isOnline ? 'Receiving orders' : 'Tap to go online'}
+                  </p>
+                </div>
+              </div>
+              <motion.div
+                animate={{ rotate: isOnline ? 180 : 0 }}
+                className={`w-10 h-6 rounded-full p-1 ${
+                  isOnline ? 'bg-teal' : 'bg-gray-700'
+                }`}
+              >
+                <motion.div
+                  animate={{ x: isOnline ? 16 : 0 }}
+                  className="w-4 h-4 bg-white rounded-full"
+                />
+              </motion.div>
+            </button>
           </motion.div>
-        </button>
-      </motion.div>
+        </div>
+      )}
 
       {/* Today's Stats */}
       <div className="grid grid-cols-3 gap-3">
@@ -159,9 +212,12 @@ export default function Dashboard() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-white text-lg">Delivery Queue</h3>
-          <span className="text-sm text-gray-400">
-            {assignedOrders.length} pending
-          </span>
+          <button
+            onClick={() => navigate('/deliveries')}
+            className="text-sm text-teal font-semibold"
+          >
+            View All
+          </button>
         </div>
 
         <div className="space-y-3">

@@ -2,10 +2,14 @@ import { FastifyInstance } from 'fastify';
 import { db } from '../db/index.js';
 import { pods } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { requireRole } from '../middleware/auth.js';
 
 export async function podRoutes(fastify: FastifyInstance) {
   // GET /api/pods - List all pods
-  fastify.get('/pods', async (request, reply) => {
+  // Accessible by: admin, operator
+  fastify.get('/pods', {
+    onRequest: [requireRole('admin', 'operator')],
+  }, async (request: any, reply) => {
     const allPods = await db.select().from(pods).where(eq(pods.active, true));
     const mapped = allPods.map((p: any) => ({
       id: p.id,
@@ -21,7 +25,10 @@ export async function podRoutes(fastify: FastifyInstance) {
   });
 
   // GET /api/pods/:id - Get pod by ID
-  fastify.get<{ Params: { id: string } }>('/pods/:id', async (request, reply) => {
+  // Accessible by: admin, operator
+  fastify.get<{ Params: { id: string } }>('/pods/:id', {
+    onRequest: [requireRole('admin', 'operator')],
+  }, async (request: any, reply) => {
     const pod = await db.select().from(pods).where(eq(pods.id, request.params.id)).then(r => r[0]);
     if (!pod) {
       return reply.code(404).send({ error: 'Pod not found' });

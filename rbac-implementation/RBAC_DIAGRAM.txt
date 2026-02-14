@@ -1,0 +1,254 @@
+================================================================================
+GAZTIME RBAC ARCHITECTURE DIAGRAM
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         GAZTIME API RBAC                                │
+│                    Role-Based Access Control                            │
+└─────────────────────────────────────────────────────────────────────────┘
+
+                            ┌──────────────┐
+                            │   JWT Token  │
+                            │ (with role)  │
+                            └──────┬───────┘
+                                   │
+                                   ▼
+                        ┌──────────────────────┐
+                        │  Auth Middleware     │
+                        │  - authenticate()    │
+                        │  - requireRole()     │
+                        │  - requireOwnership()│
+                        └──────────┬───────────┘
+                                   │
+                    ┌──────────────┼──────────────┐
+                    │              │              │
+                    ▼              ▼              ▼
+        ┌───────────────┐  ┌──────────────┐  ┌──────────────┐
+        │  Driver Routes │  │ Order Routes │  │Customer Routes│
+        │               │  │              │  │              │
+        │ - Status      │  │ - Create     │  │ - Profile    │
+        │ - Location    │  │ - View       │  │ - Wallet     │
+        │ - Deliveries  │  │ - Update     │  │ - Orders     │
+        └───────────────┘  └──────────────┘  └──────────────┘
+
+================================================================================
+ROLE HIERARCHY
+================================================================================
+
+                         ┌─────────────┐
+                         │    ADMIN    │ (Full Access)
+                         └──────┬──────┘
+                                │
+                         ┌──────▼──────┐
+                         │  OPERATOR   │ (Management Access)
+                         └─────────────┘
+                                │
+                    ┌───────────┴───────────┐
+                    │                       │
+            ┌───────▼───────┐       ┌──────▼──────┐
+            │    DRIVER     │       │  CUSTOMER   │
+            │  (Own Data)   │       │  (Own Data) │
+            └───────────────┘       └─────────────┘
+
+================================================================================
+ACCESS MATRIX
+================================================================================
+
+┌────────────────────┬───────┬──────────┬────────┬──────────┐
+│ Resource           │ Admin │ Operator │ Driver │ Customer │
+├────────────────────┼───────┼──────────┼────────┼──────────┤
+│ List All Drivers   │   ✅  │    ✅    │   ❌   │    ❌    │
+│ Update Own Status  │   ✅  │    ✅    │   ✅   │    ❌    │
+│ Update Other Driver│   ✅  │    ✅    │   ❌   │    ❌    │
+├────────────────────┼───────┼──────────┼────────┼──────────┤
+│ Create Order       │   ✅  │    ✅    │   ❌   │    ✅    │
+│ View All Orders    │   ✅  │    ✅    │   ❌   │    ❌    │
+│ View Own Orders    │   ✅  │    ✅    │   ✅   │    ✅    │
+│ Update Order Status│   ✅  │    ✅    │   ✅*  │    ❌    │
+├────────────────────┼───────┼──────────┼────────┼──────────┤
+│ List All Customers │   ✅  │    ✅    │   ❌   │    ❌    │
+│ View Own Profile   │   ✅  │    ✅    │   ❌   │    ✅    │
+│ View Other Profile │   ✅  │    ✅    │   ❌   │    ❌    │
+│ Wallet Top-up      │   ✅  │    ✅    │   ❌   │    ❌    │
+└────────────────────┴───────┴──────────┴────────┴──────────┘
+
+* Driver can only update assigned orders
+
+================================================================================
+AUTHENTICATION FLOW
+================================================================================
+
+1. User Login
+   ┌──────────┐
+   │  Client  │
+   └────┬─────┘
+        │ POST /api/auth/login
+        │ { email, password }
+        ▼
+   ┌─────────────┐
+   │     API     │ ──→ Verify password (bcrypt)
+   └─────┬───────┘
+         │
+         │ Generate JWT with role
+         │ { id, email, role, name }
+         ▼
+   ┌──────────┐
+   │  Client  │ ──→ Store token
+   └──────────┘
+
+2. Protected Request
+   ┌──────────┐
+   │  Client  │
+   └────┬─────┘
+        │ GET /api/drivers
+        │ Authorization: Bearer <token>
+        ▼
+   ┌─────────────────┐
+   │ Auth Middleware │ ──→ Verify JWT signature
+   └────┬────────────┘
+        │
+        │ Extract user { id, role }
+        ▼
+   ┌──────────────────┐
+   │ requireRole(...) │ ──→ Check if role allowed
+   └────┬─────────────┘
+        │
+        │ If allowed
+        ▼
+   ┌─────────────┐
+   │ Route Handler│ ──→ Process request
+   └──────────────┘
+
+3. Resource Ownership Check
+   ┌──────────┐
+   │  Client  │
+   └────┬─────┘
+        │ PATCH /api/drivers/drv_123/status
+        │ Authorization: Bearer <driver_token>
+        ▼
+   ┌─────────────────────┐
+   │ requireResourceAccess│ ──→ Authenticate
+   └────┬────────────────┘
+        │
+        │ Check ownership
+        │ (user.id === params.id)
+        ▼
+   ┌────────────────┐
+   │ If user.id     │ ──→ ✅ Allow
+   │ === drv_123    │
+   └────────────────┘
+        │
+        │ If user.id
+        │ !== drv_123
+        ▼
+   ┌────────────────┐
+   │ 403 Forbidden  │
+   └────────────────┘
+
+================================================================================
+FILTERING FLOW (Orders Example)
+================================================================================
+
+Admin/Operator Request:
+  GET /api/orders
+       │
+       ▼
+  [Authenticate] ──→ role = admin
+       │
+       ▼
+  [No Filtering] ──→ Return ALL orders
+       │
+       ▼
+  { data: [order1, order2, order3, ...] }
+
+
+Driver Request:
+  GET /api/orders
+       │
+       ▼
+  [Authenticate] ──→ role = driver, id = drv_123
+       │
+       ▼
+  [Apply Filter] ──→ query.driverId = drv_123
+       │
+       ▼
+  { data: [order1, order5] } ← Only assigned orders
+
+
+Customer Request:
+  GET /api/orders
+       │
+       ▼
+  [Authenticate] ──→ role = customer, id = cust_456
+       │
+       ▼
+  [Apply Filter] ──→ query.customerId = cust_456
+       │
+       ▼
+  { data: [order2] } ← Only customer's orders
+
+================================================================================
+ERROR RESPONSES
+================================================================================
+
+401 Unauthorized (Missing/Invalid Token):
+{
+  "success": false,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Invalid or missing authentication token"
+  }
+}
+
+403 Forbidden (Valid Token, Wrong Role):
+{
+  "success": false,
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "Insufficient permissions for this action"
+  }
+}
+
+403 Forbidden (Valid Token, Wrong Owner):
+{
+  "success": false,
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "Drivers can only access their own data"
+  }
+}
+
+================================================================================
+DEPLOYMENT ARCHITECTURE
+================================================================================
+
+┌─────────────────────────────────────────────────────────────┐
+│  /workspace/extra/gaztime/rbac-implementation/              │
+│                                                             │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │ enhanced-auth-middleware.ts                         │    │
+│  │ drivers-routes-rbac.ts                              │    │
+│  │ orders-routes-rbac.ts                               │    │
+│  │ customers-routes-rbac.ts                            │    │
+│  └────────────────────────────────────────────────────┘    │
+│                          │                                  │
+│                          │ deploy-rbac.sh                   │
+│                          ▼                                  │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │ /workspace/extra/gaztime/packages/api/src/          │    │
+│  │                                                     │    │
+│  │ middleware/auth.ts     ← enhanced-auth-middleware   │    │
+│  │ routes/drivers.ts      ← drivers-routes-rbac        │    │
+│  │ routes/orders.ts       ← orders-routes-rbac         │    │
+│  │ routes/customers.ts    ← customers-routes-rbac      │    │
+│  └────────────────────────────────────────────────────┘    │
+│                          │                                  │
+│                          │ pnpm dev                         │
+│                          ▼                                  │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │ Running API Server (Port 3333)                      │    │
+│  │ with RBAC Enforcement                               │    │
+│  └────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+
+================================================================================

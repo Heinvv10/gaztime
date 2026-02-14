@@ -18,7 +18,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <ErrorBoundary>
-      <BrowserRouter basename="/pos">
+      <BrowserRouter basename="/">
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route

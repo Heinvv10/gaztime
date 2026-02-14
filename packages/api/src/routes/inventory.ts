@@ -3,8 +3,9 @@
 // REST API endpoints for inventory and cylinder management
 // ============================================================================
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { InventoryService } from '../services/inventory.js';
+import { authenticate, requireRole } from '../middleware/auth.js';
 import type {
   CreateCylinderRequest,
   MoveCylinderRequest,
@@ -16,7 +17,10 @@ export async function inventoryRoutes(fastify: FastifyInstance) {
   const inventoryService = new InventoryService(fastify.db as any);
 
   // List all cylinders
-  fastify.get('/inventory/cylinders', async (request, reply) => {
+  // Accessible by: admin, operator
+  fastify.get('/inventory/cylinders', {
+    onRequest: [requireRole('admin', 'operator')],
+  }, async (request: any, reply) => {
     try {
       const { db } = await import('../db/index.js');
       const { cylinders } = await import('../db/schema.js');
@@ -42,7 +46,10 @@ export async function inventoryRoutes(fastify: FastifyInstance) {
   });
 
   // Create new cylinder
-  fastify.post<{ Body: CreateCylinderRequest }>('/inventory/cylinders', async (request, reply) => {
+  // Accessible by: admin, operator
+  fastify.post<{ Body: CreateCylinderRequest }>('/inventory/cylinders', {
+    onRequest: [requireRole('admin', 'operator')],
+  }, async (request: any, reply) => {
     try {
       const cylinder = await inventoryService.createCylinder(request.body);
       return reply.code(201).send({ success: true, data: cylinder });
@@ -58,9 +65,13 @@ export async function inventoryRoutes(fastify: FastifyInstance) {
   });
 
   // Get cylinder by ID
+  // Accessible by: admin, operator
   fastify.get<{ Params: { id: string } }>(
     '/inventory/cylinders/:id',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       const cylinder = await inventoryService.getCylinder(request.params.id);
 
       if (!cylinder) {
@@ -78,9 +89,13 @@ export async function inventoryRoutes(fastify: FastifyInstance) {
   );
 
   // Get cylinder by serial number
+  // Accessible by: admin, operator
   fastify.get<{ Params: { serial: string } }>(
     '/inventory/cylinders/serial/:serial',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       const cylinder = await inventoryService.getCylinderBySerial(request.params.serial);
 
       if (!cylinder) {
@@ -98,9 +113,13 @@ export async function inventoryRoutes(fastify: FastifyInstance) {
   );
 
   // Move cylinder
+  // Accessible by: admin, operator
   fastify.post<{ Body: MoveCylinderRequest }>(
     '/inventory/cylinders/move',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       try {
         const cylinder = await inventoryService.moveCylinder(request.body);
         return reply.send({ success: true, data: cylinder });
@@ -117,9 +136,13 @@ export async function inventoryRoutes(fastify: FastifyInstance) {
   );
 
   // Fill cylinder
+  // Accessible by: admin, operator
   fastify.post<{ Params: { id: string } }>(
     '/inventory/cylinders/:id/fill',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       try {
         const cylinder = await inventoryService.fillCylinder(request.params.id);
         return reply.send({ success: true, data: cylinder });
@@ -136,9 +159,13 @@ export async function inventoryRoutes(fastify: FastifyInstance) {
   );
 
   // Update cylinder status
+  // Accessible by: admin, operator
   fastify.patch<{ Params: { id: string }; Body: { status: CylinderStatus } }>(
     '/inventory/cylinders/:id/status',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       try {
         const cylinder = await inventoryService.updateCylinderStatus(
           request.params.id,
@@ -158,9 +185,12 @@ export async function inventoryRoutes(fastify: FastifyInstance) {
   );
 
   // Get stock levels
+  // Accessible by: admin, operator
   fastify.get<{
     Querystring: { locationType?: CylinderLocationType; locationId?: string };
-  }>('/inventory/stock', async (request, reply) => {
+  }>('/inventory/stock', {
+    onRequest: [requireRole('admin', 'operator')],
+  }, async (request: any, reply) => {
     const stockLevels = await inventoryService.getStockLevels({
       location_type: request.query.locationType,
       location_id: request.query.locationId,
@@ -169,9 +199,13 @@ export async function inventoryRoutes(fastify: FastifyInstance) {
   });
 
   // Get low stock alerts
+  // Accessible by: admin, operator
   fastify.get<{ Querystring: { threshold?: number } }>(
     '/inventory/alerts/low-stock',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       const threshold = request.query.threshold ? parseInt(String(request.query.threshold)) : 5;
       const alerts = await inventoryService.getLowStockAlerts(threshold);
       return reply.send({ success: true, data: alerts });
@@ -179,9 +213,13 @@ export async function inventoryRoutes(fastify: FastifyInstance) {
   );
 
   // Condemn cylinder
+  // Accessible by: admin only
   fastify.post<{ Params: { id: string }; Body: { reason: string } }>(
     '/inventory/cylinders/:id/condemn',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin')],
+    },
+    async (request: any, reply) => {
       try {
         const cylinder = await inventoryService.condemnCylinder(
           request.params.id,

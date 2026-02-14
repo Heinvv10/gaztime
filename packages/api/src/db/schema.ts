@@ -7,6 +7,25 @@ import { pgTable, text, integer, real, boolean, timestamp, jsonb, index } from '
 import { relations } from 'drizzle-orm';
 
 // ----------------------------------------------------------------------------
+// Users (Authentication)
+// ----------------------------------------------------------------------------
+
+export const users = pgTable('users', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  password_hash: text('password_hash').notNull(),
+  role: text('role').notNull(), // 'admin', 'driver', 'operator', 'customer'
+  name: text('name').notNull(),
+  phone: text('phone'),
+  active: boolean('active').notNull().default(true),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  last_login_at: timestamp('last_login_at'),
+}, (table) => ({
+  emailIdx: index('users_email_idx').on(table.email),
+  roleIdx: index('users_role_idx').on(table.role),
+}));
+
+// ----------------------------------------------------------------------------
 // Customers
 // ----------------------------------------------------------------------------
 

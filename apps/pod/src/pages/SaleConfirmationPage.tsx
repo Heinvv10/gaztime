@@ -16,6 +16,114 @@ export default function SaleConfirmationPage() {
   
   const { cart, selectedCustomer, paymentMethod, clearCart, updateStock } = usePodStore();
 
+  const printReceipt = () => {
+    if (!order) return;
+
+    const printWindow = window.open('', 'PRINT', 'height=600,width=400');
+
+    if (!printWindow) {
+      setToast({ message: 'Please allow popups to print', type: 'error' });
+      return;
+    }
+
+    const receiptHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Receipt #${order.reference}</title>
+          <style>
+            @media print {
+              body { margin: 0; padding: 20px; }
+            }
+            body {
+              font-family: 'Courier New', monospace;
+              font-size: 14px;
+              max-width: 300px;
+              margin: 0 auto;
+              padding: 20px;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 20px;
+              border-bottom: 2px dashed #000;
+              padding-bottom: 10px;
+            }
+            .header h2 {
+              margin: 0;
+              font-size: 20px;
+            }
+            .header p {
+              margin: 5px 0;
+              font-size: 12px;
+            }
+            .items {
+              margin: 20px 0;
+              border-bottom: 2px dashed #000;
+              padding-bottom: 10px;
+            }
+            .item {
+              display: flex;
+              justify-content: space-between;
+              margin: 8px 0;
+            }
+            .total {
+              font-size: 18px;
+              font-weight: bold;
+              margin: 15px 0;
+              text-align: right;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 20px;
+              font-size: 12px;
+              border-top: 2px dashed #000;
+              padding-top: 10px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>GAZ TIME POD</h2>
+            <p>Pay-As-You-Go LPG</p>
+            <p>Receipt #${order.reference}</p>
+          </div>
+
+          <div class="items">
+            ${order.items.map(item => `
+              <div class="item">
+                <span>${item.product?.name || 'Product'} x${item.quantity}</span>
+                <span>R${item.total.toFixed(2)}</span>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="total">
+            TOTAL: R${order.totalAmount.toFixed(2)}
+          </div>
+
+          <div class="footer">
+            <p>Payment: ${order.paymentMethod.toUpperCase()}</p>
+            <p>${new Date(order.createdAt).toLocaleString()}</p>
+            <p style="margin-top: 15px;">Thank you for your purchase!</p>
+            <p>www.gaztime.app</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(receiptHTML);
+    printWindow.document.close();
+    printWindow.focus();
+
+    // Wait for content to load, then print
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+
+    setToast({ message: 'Receipt sent to printer', type: 'success' });
+  };
+
   useEffect(() => {
     const processOrder = async () => {
       if (!selectedCustomer || !paymentMethod || cart.length === 0) {
@@ -159,7 +267,7 @@ export default function SaleConfirmationPage() {
         <div className="grid grid-cols-2 gap-4 mb-6">
           <button
             className="touch-target-lg bg-teal-500 text-white rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-teal-600"
-            onClick={() => setToast({ message: 'Print function coming soon', type: 'info' })}
+            onClick={printReceipt}
           >
             <Printer className="w-6 h-6" />
             Print Receipt

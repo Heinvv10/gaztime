@@ -163,7 +163,7 @@ export const MOCK_POD_STOCK: PodStock[] = [
 export const MOCK_OPERATOR = {
   id: 'op1',
   name: 'Nomsa Mabasa',
-  pin: '1234',
+  pin: '123456',
 };
 
 export const MOCK_POD = {

@@ -19,7 +19,7 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <BrowserRouter basename="/admin">
+      <BrowserRouter basename="/">
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route

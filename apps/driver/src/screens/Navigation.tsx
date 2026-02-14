@@ -1,23 +1,41 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Navigation as NavigationIcon, 
-  Phone, 
-  MessageCircle, 
+import {
+  Navigation as NavigationIcon,
+  Phone,
+  MessageCircle,
   MapPin,
   ChevronRight,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Locate,
+  MapPinned,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useToast } from '../hooks/useToast';
+import { useGeolocation } from '../hooks/useGeolocation';
 import Toast from '../components/Toast';
 
 export default function Navigation() {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const { orders } = useStore();
+  const { orders, updateLocation } = useStore();
   const { toast, showToast, hideToast } = useToast();
+
+  // Start GPS tracking
+  const { position, error: gpsError, isWatching } = useGeolocation({
+    watch: true,
+    enableHighAccuracy: true,
+    onLocationUpdate: (pos) => {
+      // Update driver location in backend
+      updateLocation(pos.lat, pos.lng);
+    },
+    onError: (err) => {
+      console.error('GPS error:', err);
+      showToast('GPS tracking unavailable', 'error');
+    },
+  });
 
   const order = orders.find(o => o.id === orderId);
 
@@ -59,8 +77,22 @@ export default function Navigation() {
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center space-y-4">
             <NavigationIcon className="w-16 h-16 text-teal mx-auto animate-pulse" />
-            <div className="text-white font-semibold">Mock Map View</div>
-            <div className="text-sm text-gray-400">GPS Navigation Active</div>
+            <div className="text-white font-semibold">Map View</div>
+            <div className="text-sm text-gray-400">
+              {isWatching && position
+                ? `GPS Active: ${position.lat.toFixed(6)}, ${position.lng.toFixed(6)}`
+                : gpsError
+                ? 'GPS Unavailable'
+                : 'Acquiring GPS...'}
+            </div>
+            {position && (
+              <div className="text-xs text-teal">
+                Accuracy: ±{Math.round(position.accuracy)}m
+                {position.speed && position.speed > 0 && (
+                  <> • Speed: {Math.round(position.speed * 3.6)} km/h</>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

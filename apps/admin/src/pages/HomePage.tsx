@@ -22,6 +22,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { Badge } from '@/components/ui/badge'
+import { ResponsiveTable } from '@/components/ui/responsive-table'
 import { formatCurrency, getStatusColor } from '@/lib/utils'
 // Default empty stats for initial state
 const defaultStats = {
@@ -372,7 +373,7 @@ export function HomePage() {
             <CardDescription>Driver locations and active pods</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80 rounded-lg overflow-hidden">
+            <div className="h-64 sm:h-80 rounded-lg overflow-hidden">
               <MapContainer
                 center={[-24.8833, 30.3167]}
                 zoom={13}
@@ -478,48 +479,67 @@ export function HomePage() {
           <CardDescription>Last 10 orders placed</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4 font-medium">Reference</th>
-                  <th className="text-left py-3 px-4 font-medium">Customer</th>
-                  <th className="text-left py-3 px-4 font-medium">Product</th>
-                  <th className="text-left py-3 px-4 font-medium">Channel</th>
-                  <th className="text-left py-3 px-4 font-medium">Status</th>
-                  <th className="text-left py-3 px-4 font-medium">Amount</th>
-                  <th className="text-left py-3 px-4 font-medium">Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentOrders.map((order) => (
-                  <tr key={order.id} className="border-b hover:bg-gray-50">
-                    <td className="py-3 px-4 font-mono text-xs">{order.reference}</td>
-                    <td className="py-3 px-4">{order.customer?.name || 'N/A'}</td>
-                    <td className="py-3 px-4">{order.items[0]?.product?.name || 'N/A'}</td>
-                    <td className="py-3 px-4">
-                      <Badge variant="outline" className="text-xs">
-                        {order.channel}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                          order.status
-                        )}`}
-                      >
-                        {order.status.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">{formatCurrency(order.totalAmount)}</td>
-                    <td className="py-3 px-4 text-xs text-gray-500">
-                      {new Date(order.createdAt).toLocaleTimeString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ResponsiveTable
+            data={recentOrders}
+            getKey={(order) => order.id}
+            emptyMessage="No recent orders"
+            columns={[
+              {
+                key: 'reference',
+                label: 'Reference',
+                mobileLabel: 'Ref',
+                render: (order) => (
+                  <span className="font-mono text-xs">{order.reference}</span>
+                ),
+              },
+              {
+                key: 'customer',
+                label: 'Customer',
+                render: (order) => order.customer?.name || 'N/A',
+              },
+              {
+                key: 'product',
+                label: 'Product',
+                render: (order) => order.items[0]?.product?.name || 'N/A',
+              },
+              {
+                key: 'channel',
+                label: 'Channel',
+                render: (order) => (
+                  <Badge variant="outline" className="text-xs">
+                    {order.channel}
+                  </Badge>
+                ),
+              },
+              {
+                key: 'status',
+                label: 'Status',
+                render: (order) => (
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                      order.status
+                    )}`}
+                  >
+                    {order.status.replace('_', ' ')}
+                  </span>
+                ),
+              },
+              {
+                key: 'amount',
+                label: 'Amount',
+                render: (order) => formatCurrency(order.totalAmount),
+              },
+              {
+                key: 'time',
+                label: 'Time',
+                render: (order) => (
+                  <span className="text-xs text-gray-500">
+                    {new Date(order.createdAt).toLocaleTimeString()}
+                  </span>
+                ),
+              },
+            ]}
+          />
         </CardContent>
       </Card>
     </div>

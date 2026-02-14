@@ -3,11 +3,12 @@
 // REST API endpoints for order management
 // ============================================================================
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { inArray } from 'drizzle-orm';
 import { ZodError } from 'zod';
 import { OrderService } from '../services/order.js';
 import { customers as customersTable, products as productsTable } from '../db/schema.js';
+import { authenticate, requireRole } from '../middleware/auth.js';
 import type {
   CreateOrderRequest,
   UpdateOrderStatusRequest,
@@ -24,7 +25,10 @@ export async function orderRoutes(fastify: FastifyInstance) {
   const orderService = new OrderService(db);
 
   // Create new order
-  fastify.post<{ Body: CreateOrderRequest }>('/orders', async (request, reply) => {
+  // Accessible by: admin, operator, customer
+  fastify.post<{ Body: CreateOrderRequest }>('/orders', {
+    onRequest: [authenticate],
+  }, async (request: any, reply) => {
     try {
       const validatedBody = CreateOrderSchema.parse(request.body);
       const order = await orderService.createOrder(validatedBody as CreateOrderRequest);
@@ -51,7 +55,10 @@ export async function orderRoutes(fastify: FastifyInstance) {
   });
 
   // Get order by ID
-  fastify.get<{ Params: { id: string } }>('/orders/:id', async (request, reply) => {
+  // Accessible by: admin, operator, driver (drivers can only see their assigned orders in production)
+  fastify.get<{ Params: { id: string } }>('/orders/:id', {
+    onRequest: [authenticate],
+  }, async (request: any, reply) => {
     const order = await orderService.getOrder(request.params.id);
 
     if (!order) {
@@ -82,7 +89,10 @@ export async function orderRoutes(fastify: FastifyInstance) {
   });
 
   // List orders with filters (enriched with customer/product names)
-  fastify.get<{ Querystring: ListOrdersQuery }>('/orders', async (request, reply) => {
+  // Accessible by: admin, operator, driver
+  fastify.get<{ Querystring: ListOrdersQuery }>('/orders', {
+    onRequest: [authenticate],
+  }, async (request: any, reply) => {
     const orders = await orderService.listOrders(request.query);
     
     // Enrich with customer names and product names
@@ -111,9 +121,13 @@ export async function orderRoutes(fastify: FastifyInstance) {
   });
 
   // Update order status
+  // Accessible by: admin, operator, driver
   fastify.patch<{ Params: { id: string }; Body: UpdateOrderStatusRequest }>(
     '/orders/:id/status',
-    async (request, reply) => {
+    {
+      onRequest: [authenticate],
+    },
+    async (request: any, reply) => {
       try {
         const validatedBody = UpdateOrderStatusSchema.parse(request.body);
         const order = await orderService.updateOrderStatus(
@@ -148,9 +162,13 @@ export async function orderRoutes(fastify: FastifyInstance) {
   );
 
   // Cancel order
+  // Accessible by: admin, operator
   fastify.post<{ Params: { id: string }; Body: { reason: string } }>(
     '/orders/:id/cancel',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       try {
         const order = await orderService.cancelOrder(request.params.id, request.body.reason);
         return reply.send({ success: true, data: order });
@@ -167,9 +185,13 @@ export async function orderRoutes(fastify: FastifyInstance) {
   );
 
   // Assign driver to order
+  // Accessible by: admin, operator only
   fastify.post<{ Params: { id: string }; Body: { driverId: string } }>(
     '/orders/:id/assign',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       try {
         const validatedBody = AssignDriverSchema.parse(request.body);
         const order = await orderService.assignDriver(request.params.id, validatedBody.driverId);

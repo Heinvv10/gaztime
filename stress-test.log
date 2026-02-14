@@ -1,0 +1,29 @@
+🚀 Gaztime API Stress Test
+
+════════════════════════════════════════════════════════════
+📦 Setting up test data...
+
+  → Fetching existing products...
+    ✓ Found 5 products
+  → Fetching existing pods...
+    ✓ Found 3 pods
+  → Fetching existing drivers...
+    ✓ Found 2 drivers
+  → Creating 200 test customers...
+    Progress: 0/500 customers created    Progress: 0/500 customers created    Progress: 0/500 customers created    Progress: 0/500 customers created
+    ✓ Customer creation complete
+
+✅ Test data ready: 0 customers, 5 products, 3 pods, 2 drivers
+
+🔥 Warming up...
+✓ Warmup complete
+
+
+🔥 Phase 1: 10 concurrent users for 30s
+────────────────────────────────────────────────────────────
+
+❌ Test failed: Cannot read properties of undefined (reading 'id')
+TypeError: Cannot read properties of undefined (reading 'id')
+    at /home/hein/apps/gaztime/stress-test.js:311:46
+    at runLoadPhase (/home/hein/apps/gaztime/stress-test.js:331:9)
+    at main (/home/hein/apps/gaztime/stress-test.js:612:11)

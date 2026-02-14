@@ -3,9 +3,10 @@
 // REST API endpoints for driver and delivery management
 // ============================================================================
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import { DeliveryService } from '../services/delivery.js';
+import { authenticate, requireRole } from '../middleware/auth.js';
 import type {
   DriverStatus,
   UpdateDriverLocationRequest,
@@ -17,7 +18,10 @@ export async function driverRoutes(fastify: FastifyInstance) {
   const deliveryService = new DeliveryService(fastify.db as any);
 
   // List all drivers
-  fastify.get('/drivers', async (request, reply) => {
+  // Accessible by: admin, operator
+  fastify.get('/drivers', {
+    onRequest: [requireRole('admin', 'operator')],
+  }, async (request: any, reply) => {
     try {
       const { db } = await import('../db/index.js');
       const { drivers } = await import('../db/schema.js');
@@ -47,9 +51,13 @@ export async function driverRoutes(fastify: FastifyInstance) {
   });
 
   // GET /api/drivers/phone/:phone - Get driver by phone number
+  // Accessible by: admin, operator
   fastify.get<{ Params: { phone: string } }>(
     '/drivers/phone/:phone',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       try {
         const allDrivers = await deliveryService.getAvailableDrivers();
         const driver = allDrivers.find((d: any) => {
@@ -68,10 +76,15 @@ export async function driverRoutes(fastify: FastifyInstance) {
   );
 
   // Update driver status
+  // Accessible by: admin, operator, driver (driver can only update their own status)
   fastify.patch<{ Params: { id: string }; Body: { status: DriverStatus } }>(
     '/drivers/:id/status',
-    async (request, reply) => {
+    {
+      onRequest: [authenticate],
+    },
+    async (request: any, reply) => {
       try {
+        // TODO: Add check if driver role, ensure they can only update their own status
         await deliveryService.updateDriverStatus(request.params.id, request.body.status);
         return reply.send({ success: true, data: { id: request.params.id, status: request.body.status } });
       } catch (error: any) {
@@ -87,10 +100,15 @@ export async function driverRoutes(fastify: FastifyInstance) {
   );
 
   // Update driver location
+  // Accessible by: admin, operator, driver (driver can only update their own location)
   fastify.patch<{ Params: { id: string }; Body: { location: { lat: number; lng: number } } }>(
     '/drivers/:id/location',
-    async (request, reply) => {
+    {
+      onRequest: [authenticate],
+    },
+    async (request: any, reply) => {
       try {
+        // TODO: Add check if driver role, ensure they can only update their own location
         const validatedBody = UpdateDriverLocationSchema.parse(request.body);
         await deliveryService.updateDriverLocation(request.params.id, validatedBody.location);
         return reply.send({ success: true, data: { id: request.params.id, location: validatedBody.location } });
@@ -117,15 +135,22 @@ export async function driverRoutes(fastify: FastifyInstance) {
   );
 
   // Get available drivers
-  fastify.get('/drivers/available', async (request, reply) => {
+  // Accessible by: admin, operator
+  fastify.get('/drivers/available', {
+    onRequest: [requireRole('admin', 'operator')],
+  }, async (request: any, reply) => {
     const drivers = await deliveryService.getAvailableDrivers();
     return reply.send({ success: true, data: drivers });
   });
 
   // Find nearest driver
+  // Accessible by: admin, operator
   fastify.post<{ Body: { lat: number; lng: number } }>(
     '/drivers/nearest',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       const driver = await deliveryService.findNearestDriver(request.body);
 
       if (!driver) {
@@ -143,9 +168,13 @@ export async function driverRoutes(fastify: FastifyInstance) {
   );
 
   // Assign driver to order
+  // Accessible by: admin, operator only
   fastify.post<{ Body: { orderId: string; driverId: string } }>(
     '/drivers/assign',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       try {
         const order = await deliveryService.assignDriverToOrder(
           request.body.orderId,
@@ -165,9 +194,13 @@ export async function driverRoutes(fastify: FastifyInstance) {
   );
 
   // Complete delivery
+  // Accessible by: admin, operator, driver
   fastify.post<{ Body: { orderId: string; proof: DeliveryProof } }>(
     '/drivers/complete-delivery',
-    async (request, reply) => {
+    {
+      onRequest: [authenticate],
+    },
+    async (request: any, reply) => {
       try {
         const order = await deliveryService.completeDelivery(request.body.orderId, request.body.proof);
         return reply.send({ success: true, data: order });

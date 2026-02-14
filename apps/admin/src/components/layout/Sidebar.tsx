@@ -29,9 +29,9 @@ const navigation = [
 
 export function Sidebar() {
   return (
-    <aside className="w-64 bg-brand-sidebar flex flex-col">
+    <aside className="w-64 bg-brand-sidebar flex flex-col h-full">
       {/* Logo */}
-      <div className="flex h-16 items-center gap-2 px-6 border-b border-gray-700">
+      <div className="flex h-16 items-center gap-2 px-6 border-b border-gray-700 mt-16 lg:mt-0">
         <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-teal">
           <Flame className="h-6 w-6 text-white" />
         </div>

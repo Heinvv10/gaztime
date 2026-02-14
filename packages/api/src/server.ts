@@ -5,6 +5,9 @@
 
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import jwt from '@fastify/jwt';
+// Rate limiting temporarily disabled - package not installed
+// import rateLimit from '@fastify/rate-limit';
 import { db } from './db/index.js';
 import { orderRoutes } from './routes/orders.js';
 import { customerRoutes } from './routes/customers.js';
@@ -12,6 +15,7 @@ import { inventoryRoutes } from './routes/inventory.js';
 import { driverRoutes } from './routes/drivers.js';
 import { productRoutes } from './routes/products.js';
 import { podRoutes } from './routes/pods.js';
+import { authRoutes } from './routes/auth.js';
 
 // Extend Fastify instance with db
 declare module 'fastify' {
@@ -29,11 +33,61 @@ async function buildServer() {
         },
   });
 
-  // Register CORS
+  // Register CORS - restrict to Gaztime domains only
+  const allowedOrigins = [
+    'https://gaztime.app',
+    'https://www.gaztime.app',
+    'https://admin.gaztime.app',
+    'https://driver.gaztime.app',
+    'https://pos.gaztime.app',
+    'https://gaztime.com',
+    'https://www.gaztime.com',
+    // Development origins
+    'http://localhost:3007',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://172.17.0.1:3007',
+  ];
+
   await fastify.register(cors, {
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: (origin, cb) => {
+      // Allow requests with no origin (mobile apps, Postman, curl)
+      if (!origin) {
+        cb(null, true);
+        return;
+      }
+
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
+        cb(null, true);
+        return;
+      }
+
+      // Allow custom origin from env var (for testing)
+      if (process.env.CORS_ORIGIN && origin === process.env.CORS_ORIGIN) {
+        cb(null, true);
+        return;
+      }
+
+      // Reject all other origins
+      cb(new Error('Not allowed by CORS'), false);
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    credentials: true, // Allow cookies for authentication
   });
+
+  // Register JWT
+  await fastify.register(jwt, {
+    secret: process.env.JWT_SECRET || 'development-secret-change-in-production-2024',
+  });
+
+  // Rate limiting temporarily disabled - package not installed
+  // TODO: Install @fastify/rate-limit and uncomment
+  // await fastify.register(rateLimit, {
+  //   global: true,
+  //   max: 100,
+  //   timeWindow: '1 minute',
+  // });
 
   // Add database to fastify instance
   fastify.decorate('db', db);
@@ -54,15 +108,19 @@ async function buildServer() {
       version: '0.1.0',
       description: 'LPG delivery platform backend',
       endpoints: {
+        auth: '/api/auth',
         orders: '/api/orders',
         customers: '/api/customers',
         inventory: '/api/inventory',
         drivers: '/api/drivers',
+        products: '/api/products',
+        pods: '/api/pods',
       },
     };
   });
 
   // Register API routes
+  await fastify.register(authRoutes, { prefix: '/api' }); // Auth routes (public)
   await fastify.register(orderRoutes, { prefix: '/api' });
   await fastify.register(customerRoutes, { prefix: '/api' });
   await fastify.register(inventoryRoutes, { prefix: '/api' });
@@ -98,6 +156,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         console.log(`🚀 Gaz Time API running on http://${HOST}:${PORT}`);
         console.log(`📊 Health check: http://${HOST}:${PORT}/health`);
         console.log(`📚 API info: http://${HOST}:${PORT}/api`);
+        console.log(`🔐 Auth endpoints: http://${HOST}:${PORT}/api/auth`);
       } catch (err) {
         server.log.error(err);
         process.exit(1);

@@ -3,6 +3,7 @@ import { useStore } from './store/useStore';
 import Layout from './components/Layout';
 import Login from './screens/Login';
 import Dashboard from './screens/Dashboard';
+import DeliveryList from './screens/DeliveryList';
 import OrderNotification from './screens/OrderNotification';
 import Navigation from './screens/Navigation';
 import DeliveryCompletion from './screens/DeliveryCompletion';
@@ -16,13 +17,14 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <BrowserRouter basename="/driver">
+      <BrowserRouter basename="/">
       <Routes>
         <Route path="/login" element={<Login />} />
         
         {isAuthenticated ? (
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
+            <Route path="deliveries" element={<DeliveryList />} />
             <Route path="order/:orderId" element={<OrderNotification />} />
             <Route path="navigate/:orderId" element={<Navigation />} />
             <Route path="complete/:orderId" element={<DeliveryCompletion />} />

@@ -8,11 +8,19 @@ export default function LoginPage() {
   const [error, setError] = useState(false);
   const login = usePodStore(state => state.login);
   const navigate = useNavigate();
+n  // Auto-submit when 6 digits entered
+  const handleAutoSubmit = async (currentPin: string) => {
+    const success = await login(currentPin);
+    if (success) navigate("/pos");
+    else { setError(true); setPin(""); }
+  };
 
   const handleNumberClick = (num: string) => {
-    if (pin.length < 6) {
-      setPin(pin + num);
+    if (pin.length < 5) {
+      const newPin = pin + num;
+      setPin(newPin);
       setError(false);
+      if (newPin.length === 6) handleAutoSubmit(newPin);
     }
   };
 
@@ -99,7 +107,7 @@ export default function LoginPage() {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={pin.length < 4}
+            disabled={pin.length < 6}
             className="touch-target-lg bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-2xl text-xl font-bold transition-all"
             data-testid="pin-submit"
           >

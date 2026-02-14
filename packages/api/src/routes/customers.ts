@@ -3,9 +3,10 @@
 // REST API endpoints for customer management
 // ============================================================================
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import { CustomerService } from '../services/customer.js';
+import { authenticate, requireRole } from '../middleware/auth.js';
 import type {
   RegisterCustomerRequest,
   UpdateCustomerRequest,
@@ -18,7 +19,10 @@ export async function customerRoutes(fastify: FastifyInstance) {
   const customerService = new CustomerService(fastify.db as any);
 
   // List all customers
-  fastify.get('/customers', async (request, reply) => {
+  // Accessible by: admin, operator only
+  fastify.get('/customers', {
+    onRequest: [requireRole('admin', 'operator')],
+  }, async (request: any, reply) => {
     try {
       const { db } = await import('../db/index.js');
       const { customers } = await import('../db/schema.js');
@@ -44,7 +48,17 @@ export async function customerRoutes(fastify: FastifyInstance) {
   });
 
   // Register new customer
-  fastify.post<{ Body: RegisterCustomerRequest }>('/customers', async (request, reply) => {
+  // Rate limit: 30 requests per minute for write operations
+  // Accessible by: admin, operator (authenticated users only)
+  fastify.post<{ Body: RegisterCustomerRequest }>('/customers', {
+    onRequest: [authenticate],
+    config: {
+      rateLimit: {
+        max: 30,
+        timeWindow: '1 minute',
+      },
+    },
+  }, async (request: any, reply) => {
     try {
       const validatedBody = CreateCustomerSchema.parse(request.body);
       // Normalize: frontend sends addresses[] or address{}
@@ -82,7 +96,10 @@ export async function customerRoutes(fastify: FastifyInstance) {
   });
 
   // Get customer by ID
-  fastify.get<{ Params: { id: string } }>('/customers/:id', async (request, reply) => {
+  // Accessible by: admin, operator
+  fastify.get<{ Params: { id: string } }>('/customers/:id', {
+    onRequest: [requireRole('admin', 'operator')],
+  }, async (request: any, reply) => {
     const customer = await customerService.getCustomer(request.params.id);
 
     if (!customer) {
@@ -99,9 +116,13 @@ export async function customerRoutes(fastify: FastifyInstance) {
   });
 
   // Get customer by phone
+  // Accessible by: admin, operator
   fastify.get<{ Params: { phone: string } }>(
     '/customers/phone/:phone',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       const customer = await customerService.getCustomerByPhone(request.params.phone);
 
       if (!customer) {
@@ -119,9 +140,13 @@ export async function customerRoutes(fastify: FastifyInstance) {
   );
 
   // Update customer
+  // Accessible by: admin, operator
   fastify.patch<{ Params: { id: string }; Body: UpdateCustomerRequest }>(
     '/customers/:id',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       try {
         const customer = await customerService.updateCustomer(request.params.id, request.body);
         return reply.send({ success: true, data: customer });
@@ -138,9 +163,13 @@ export async function customerRoutes(fastify: FastifyInstance) {
   );
 
   // Get wallet balance
+  // Accessible by: admin, operator
   fastify.get<{ Params: { id: string } }>(
     '/customers/:id/wallet',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       try {
         const balance = await customerService.getWalletBalance(request.params.id);
         return reply.send({ success: true, data: { balance } });
@@ -157,9 +186,13 @@ export async function customerRoutes(fastify: FastifyInstance) {
   );
 
   // Top up wallet
+  // Accessible by: admin, operator only
   fastify.post<{ Params: { id: string }; Body: { amount: number } }>(
     '/customers/:id/wallet/topup',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       try {
         await customerService.topUpWallet(request.params.id, request.body.amount);
         const balance = await customerService.getWalletBalance(request.params.id);
@@ -177,9 +210,13 @@ export async function customerRoutes(fastify: FastifyInstance) {
   );
 
   // Debit wallet
+  // Accessible by: admin, operator only
   fastify.post<{ Params: { id: string }; Body: { amount: number } }>(
     '/customers/:id/wallet/debit',
-    async (request, reply) => {
+    {
+      onRequest: [requireRole('admin', 'operator')],
+    },
+    async (request: any, reply) => {
       try {
         await customerService.debitWallet(request.params.id, request.body.amount);
         const balance = await customerService.getWalletBalance(request.params.id);

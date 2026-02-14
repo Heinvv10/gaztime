@@ -9,6 +9,9 @@ export default function DailyReportsPage() {
   const navigate = useNavigate();
   const { orders } = usePodStore();
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [actualCash, setActualCash] = useState<number | ''>('');
+  const [submitting, setSubmitting] = useState(false);
+  const [reconciliationSuccess, setReconciliationSuccess] = useState(false);
 
   // Filter today's orders
   const todayOrders = orders.filter(order => isToday(new Date(order.createdAt)));
@@ -38,6 +41,66 @@ export default function DailyReportsPage() {
     acc[method] = (acc[method] || 0) + order.totalAmount;
     return acc;
   }, {} as Record<string, number>);
+
+  const handleReconciliation = async () => {
+    if (actualCash === '' || actualCash < 0) {
+      setToast({ message: 'Please enter a valid cash amount', type: 'error' });
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const expectedCash = paymentBreakdown.cash || 0;
+      const today = format(new Date(), 'yyyy-MM-dd');
+
+      // Get operator ID from localStorage or auth context
+      const operatorId = localStorage.getItem('userId') || 'operator_unknown';
+      const podId = localStorage.getItem('podId') || 'pod_01';
+
+      const response = await fetch(`http://172.17.0.1:3333/api/pods/${podId}/reconciliation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          date: today,
+          expectedCash,
+          actualCash: Number(actualCash),
+          operatorId,
+          notes: actualCash !== expectedCash ? `Variance: R${Math.abs(Number(actualCash) - expectedCash).toFixed(2)}` : null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit reconciliation');
+      }
+
+      const result = await response.json();
+
+      setReconciliationSuccess(true);
+      setToast({
+        message: `Cash reconciliation submitted! Variance: R${result.data.variance.toFixed(2)}`,
+        type: result.data.variance === 0 ? 'success' : 'info'
+      });
+
+      // Clear form
+      setTimeout(() => {
+        setActualCash('');
+        setReconciliationSuccess(false);
+      }, 3000);
+
+    } catch (error: any) {
+      console.error('Reconciliation error:', error);
+      setToast({
+        message: error.message || 'Failed to submit reconciliation',
+        type: 'error'
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -154,14 +217,18 @@ export default function DailyReportsPage() {
               <input
                 type="number"
                 placeholder="Enter amount"
-                className="px-4 py-2 border-2 border-gray-300 rounded-lg text-xl font-bold w-48 text-right focus:outline-none focus:border-teal-500"
+                value={actualCash}
+                onChange={(e) => setActualCash(e.target.value ? Number(e.target.value) : '')}
+                disabled={submitting || reconciliationSuccess}
+                className="px-4 py-2 border-2 border-gray-300 rounded-lg text-xl font-bold w-48 text-right focus:outline-none focus:border-teal-500 disabled:bg-gray-100"
               />
             </div>
             <button
-              className="w-full touch-target bg-teal-500 hover:bg-teal-600 text-white font-semibold rounded-xl"
-              onClick={() => setToast({ message: 'Cash reconciliation submitted', type: 'success' })}
+              className="w-full touch-target bg-teal-500 hover:bg-teal-600 text-white font-semibold rounded-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
+              onClick={handleReconciliation}
+              disabled={submitting || reconciliationSuccess || actualCash === ''}
             >
-              Submit Reconciliation
+              {submitting ? 'Submitting...' : reconciliationSuccess ? '✓ Submitted' : 'Submit Reconciliation'}
             </button>
           </div>
         </div>

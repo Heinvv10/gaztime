@@ -39,6 +39,13 @@ interface DriverStore {
   isOnline: boolean;
   lastSync: Date | null;
   toggleOnline: () => Promise<void>;
+
+  // Shift management
+  shiftStartTime: Date | null;
+  shiftEndTime: Date | null;
+  startShift: () => void;
+  endShift: () => void;
+  isOnShift: boolean;
 }
 
 export const useStore = create<DriverStore>((set, get) => ({
@@ -258,10 +265,10 @@ export const useStore = create<DriverStore>((set, get) => ({
   toggleOnline: async () => {
     const { isOnline, setStatus } = get();
     const newStatus = !isOnline ? 'online' : 'offline';
-    
+
     await setStatus(newStatus);
-    
-    set({ 
+
+    set({
       isOnline: !isOnline,
       lastSync: new Date(),
     });
@@ -270,5 +277,32 @@ export const useStore = create<DriverStore>((set, get) => ({
     if (!isOnline) {
       await get().loadOrders();
     }
+  },
+
+  // Shift management
+  shiftStartTime: null,
+  shiftEndTime: null,
+  isOnShift: false,
+
+  startShift: () => {
+    const now = new Date();
+    set({
+      shiftStartTime: now,
+      shiftEndTime: null,
+      isOnShift: true,
+    });
+    // Auto go online when shift starts
+    get().toggleOnline();
+  },
+
+  endShift: () => {
+    const now = new Date();
+    set({
+      shiftEndTime: now,
+      isOnShift: false,
+      isOnline: false,
+    });
+    // Auto go offline when shift ends
+    get().setStatus('offline');
   },
 }));
