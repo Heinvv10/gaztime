@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Flame, ShoppingCart, User, Search, CreditCard, Wallet, Smartphone, Ticket, LogOut, Plus, Minus, Trash2 } from 'lucide-react';
+import { Flame, ShoppingCart, User, Search, CreditCard, Wallet, Smartphone, Ticket, LogOut, Trash2 } from 'lucide-react';
 import { usePodStore } from '../store/usePodStore';
 import type { PaymentMethod } from '@gaztime/shared';
 
@@ -9,7 +9,6 @@ export default function POSPage() {
   const [phoneSearch, setPhoneSearch] = useState('');
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
-  const [showCart, setShowCart] = useState(false);
 
   const {
     products,

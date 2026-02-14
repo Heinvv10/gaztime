@@ -8,7 +8,7 @@ export default function LoginPage() {
   const [error, setError] = useState(false);
   const login = usePodStore(state => state.login);
   const navigate = useNavigate();
-n  // Auto-submit when 6 digits entered
+// Auto-submit when 6 digits entered
   const handleAutoSubmit = async (currentPin: string) => {
     const success = await login(currentPin);
     if (success) navigate("/pos");
