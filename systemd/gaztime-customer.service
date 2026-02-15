@@ -1,0 +1,20 @@
+[Unit]
+Description=Gaztime Customer PWA
+After=network.target gaztime-api.service
+Wants=gaztime-api.service
+
+[Service]
+Type=simple
+User=hein
+WorkingDirectory=/home/hein/apps/gaztime/apps/customer
+Environment=NODE_ENV=production
+Environment=PORT=3334
+Environment=VITE_API_URL=http://172.17.0.1:3333
+ExecStart=/usr/bin/pnpm preview --port 3334 --host 0.0.0.0
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

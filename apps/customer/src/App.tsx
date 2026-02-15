@@ -12,6 +12,9 @@ import { PhoneInput } from './pages/auth/PhoneInput';
 import { VerifyOTP } from './pages/auth/VerifyOTP';
 import { SetupProfile } from './pages/auth/SetupProfile';
 import { Home } from './pages/Home';
+import { Shop } from './pages/Shop';
+import { Cart } from './pages/Cart';
+import { Checkout } from './pages/Checkout';
 import { OrderProduct } from './pages/OrderProduct';
 import { OrderTracking } from './pages/OrderTracking';
 import { Orders } from './pages/Orders';
@@ -46,6 +49,39 @@ function App() {
                     <Home />
                     <BottomNav />
                   </>
+                ) : (
+                  <Navigate to="/auth/phone" replace />
+                )
+              }
+            />
+            <Route
+              path="/shop"
+              element={
+                isAuthenticated ? (
+                  <>
+                    <Shop />
+                    <BottomNav />
+                  </>
+                ) : (
+                  <Navigate to="/auth/phone" replace />
+                )
+              }
+            />
+            <Route
+              path="/cart"
+              element={
+                isAuthenticated ? (
+                  <Cart />
+                ) : (
+                  <Navigate to="/auth/phone" replace />
+                )
+              }
+            />
+            <Route
+              path="/checkout"
+              element={
+                isAuthenticated ? (
+                  <Checkout />
                 ) : (
                   <Navigate to="/auth/phone" replace />
                 )
